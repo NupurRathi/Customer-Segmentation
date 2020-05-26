@@ -1,0 +1,141 @@
+#Case Study : Customer Segmentation
+```{r}
+setwd("C:/Users/Nupur Rathi/Projects/Customer Segmentation/customer-segmentation-dataset")
+cust<-read.csv("Mall_Customers.csv")
+
+```
+#Understanding Data
+```{r}
+head(cust)
+dim(cust)
+names(cust)
+
+#Renaming the columns
+library(dplyr)
+cust<-cust%>%
+  rename("Spend"=Spending.Score..1.100.,"Income"=Annual.Income..k..)
+
+#Checking structure
+str(cust)
+#structure or data types are in correct format
+
+#Duplicate obs check
+anyDuplicated(cust)
+
+#Missing value check
+colSums(is.na(cust))
+
+
+```
+
+#Data visualization
+#Gender
+```{r}
+gender<-table(cust$Gender)
+barplot(gender,xlab="Gender",ylab = "Count",main = "Gender Comparision",col = c("pink","blue"),legend=rownames(gender))
+
+
+```
+
+```{r}
+pct=gender/sum(gender)*100
+lbs<-paste(c("Female","Male"), pct, "%")
+lbs
+library(plotrix)
+pie3D(gender, labels = lbs)
+```
+
+#Age
+```{r}
+hist(cust$Age,col = "grey",xlab = "Customer Age",ylab="Count",main="Distribution of CustomerAge")
+boxplot(cust$Age,col="pink")
+```
+
+#Income
+```{r}
+summary(cust$Income)
+boxplot(cust$Income)
+hist(cust$Income,col="blue",xlab = "Customer Income",ylab="Count" , main="Distribution of Income")
+```
+#Min Income  : 15 , MaxIncome is 137, average Income : 60 k , median : 70 k
+
+#Spend
+```{r}
+summary(cust$Spend)
+boxplot(cust$Spend,col="maroon")
+hist(cust$Spend,col="purple",labels = TRUE)
+```
+
+#More ppl spend 40-50 k
+
+#Clustering
+
+#Heirarchial Clustering
+```{r}
+d_euc<-dist(cust,method = "euclidean")
+print(d_euc)
+hclust1<-hclust(d_euc,method = "average")
+plot(hclust1,labels = cust$CustomerID)
+rect.hclust(hclust1,k=8,border = "blue")
+
+#Adding Column clusters
+cust$clusters<-cutree(hclust1,k=8)
+View(cust)
+
+#profiling the clusters
+aggr<-aggregate(cust[,-c(1:2)],list(cust$clusters),mean)
+aggr
+
+clus.profile<-data.frame(cluster=aggr[,5],
+                         frequency=as.vector(table(cust$clusters)),
+                         aggr[,-c(1,5)])
+clus.profile
+```
+
+
+
+#Scale Data: In this case we dont need scale but normally when we have uncleaned data income in thousands and age in tens, we need to do scaling.
+```{r}
+custScale<-scale(cust[,-c(1:2)])  # By Default - Z Scaling
+head(cust)
+```
+
+#k-means
+#Identifying the optimal number of clusters
+```{r}
+install.packages("NbClust")
+install.packages("factoextra")
+library(NbClust)
+library(factoextra)
+
+#To have a plot of optimal clusters.
+fviz_nbclust(custScale,kmeans,method = "wss")+
+   geom_vline(xintercept = 5, linetype = 2)+
+  labs(subtitle = "Elbow method")
+
+```
+
+#kmeans clustering
+```{r}
+model1<-kmeans(x=custScale,centers=4)
+model1
+model2<-kmeans(x=custScale,centers = 5)
+model2
+```
+
+```{r}
+cust$kc4<-model1$cluster
+cust$kc5<-model2$cluster
+
+write.csv(cust,"cust.csv")
+```
+
+```{r}
+
+ggplot(cust,aes(x=Income,y=Spend))+
+  geom_point(aes(color=as.factor(kc5)))+
+  scale_color_discrete(labels=c("Cluster 1","Cluster 2","Cluster 3","Cluster 4",
+                                "Cluster 5"),name="Clusters")
+  
+```
+
